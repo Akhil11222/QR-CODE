@@ -1,354 +1,368 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-  ShieldCheck,
   QrCode,
   FileText,
-  Smartphone,
-  Sparkles,
   ArrowRight,
-  CheckCircle2,
-  Download,
   Building2,
-  Award,
-  Layers,
+  MapPin,
   Phone,
   Mail,
-  FlaskConical,
+  Image as ImageIcon,
+  Palette,
+  Award,
+  ListChecks,
+  Play,
+  Pause,
+  Download,
+  Smartphone,
+  CheckCircle2,
 } from "lucide-react";
-import Image from "next/image";
 
 interface HeroSectionProps {
-  onStartBuilder: () => void;
-  onPreviewClient: () => void;
+  onGetStarted: () => void;
 }
 
-export default function HeroSection({ onStartBuilder, onPreviewClient }: HeroSectionProps) {
-  const [activeTab, setActiveTab] = useState<"packaging" | "mobile" | "pdf">("packaging");
+const INCLUDED_FIELDS = [
+  { icon: Building2, label: "Firm Name" },
+  { icon: MapPin, label: "Firm Address" },
+  { icon: Phone, label: "Mobile Number" },
+  { icon: Mail, label: "Email Address" },
+  { icon: ImageIcon, label: "Product Image" },
+  { icon: Palette, label: "Logo (Auto-Color PDF)" },
+  { icon: Award, label: "Licence Number" },
+  { icon: ListChecks, label: "Ingredients & Specs" },
+];
+
+export default function HeroSection({ onGetStarted }: HeroSectionProps) {
+  const [activeScene, setActiveScene] = useState<0 | 1 | 2>(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const timer = setInterval(() => {
+      setActiveScene((prev) => ((prev + 1) % 3) as 0 | 1 | 2);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, [isPlaying]);
 
   return (
-    <section className="relative overflow-hidden bg-white border-b border-slate-200 pt-8 pb-16 lg:pt-14 lg:pb-24">
-      {/* Subtle Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(#E2E8F0_1px,transparent_1px)] [background-size:24px_24px] opacity-60 pointer-events-none" />
+    <section className="w-full py-8 sm:py-14 lg:py-20 px-4 sm:px-6">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        {/* Left Column: Clean Software Intro & Get Started */}
+        <div className="lg:col-span-6 space-y-6 text-left">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
+            <QrCode className="w-3.5 h-3.5" />
+            <span>Smart Product PDF &amp; QR Software</span>
+          </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-          {/* Left Column: Commercial Pitch */}
-          <div className="lg:col-span-6 flex flex-col items-start">
-            {/* Trust Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold mb-6">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              <span>FSSAI FoSCoS &amp; GS1 India Compliant Architecture</span>
-            </div>
+          <h1 className="font-display text-2xl sm:text-4xl lg:text-[42px] font-extrabold text-slate-900 leading-[1.18] tracking-tight">
+            Create Structured{" "}
+            <span className="text-indigo-600">Product PDF</span> &amp;{" "}
+            <span className="text-indigo-600">Scannable QR Code</span>
+          </h1>
 
-            {/* Main Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-5xl font-black text-slate-900 tracking-tight leading-[1.15] mb-5">
-              Official Digital Product Passports &amp;{" "}
-              <span className="text-emerald-800 underline decoration-emerald-500/40 underline-offset-8">
-                Scannable Compliance PDFs
-              </span>{" "}
-              for Leading Brands
-            </h1>
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl">
+            Enter your firm and product details step-by-step. The software
+            automatically picks colors from your logo, builds a structured PDF
+            document, and generates a permanent QR code that opens your PDF
+            whenever scanned.
+          </p>
 
-            {/* Subheadline */}
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl">
-              Turn mandatory FSSAI licence numbers, packaging declarations, GTIN barcodes, and nutritional lab reports into smart, instant smartphone-scannable QR codes and auto-branded PDF dossiers in 60 seconds.
+          {/* Included Fields Pills */}
+          <div className="pt-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+              Included Details in PDF &amp; QR
             </p>
-
-            {/* Dual CTAs */}
-            <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-10">
-              <button
-                onClick={onStartBuilder}
-                id="hero-create-btn"
-                className="btn-emerald py-3.5 px-7 text-base shadow-md cursor-pointer"
-              >
-                <QrCode className="w-5 h-5 text-emerald-200" />
-                <span>Create Product QR Now</span>
-              </button>
-
-              <button
-                onClick={onPreviewClient}
-                id="hero-preview-sample-btn"
-                className="btn-outline-corporate py-3.5 px-6 text-sm font-bold bg-white text-slate-800 border-slate-300 hover:bg-slate-50 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-amber-700" />
-                <span>Preview Hari Sharnam Live Demo</span>
-              </button>
-            </div>
-
-            {/* Key Metrics / Highlights Strip */}
-            <div className="w-full grid grid-cols-3 gap-4 pt-6 border-t border-slate-200">
-              <div>
-                <p className="text-xl sm:text-2xl font-black text-slate-900 font-display">100%</p>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                  Native Camera Scannable (No App Needed)
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xl sm:text-2xl font-black text-emerald-800 font-display">Auto-Theme</p>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                  Logo Color Palette Dynamic PDF Dossier
-                </p>
-              </div>
-
-              <div>
-                <p className="text-xl sm:text-2xl font-black text-slate-900 font-display">FSSAI / GS1</p>
-                <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                  Legal Metrology &amp; Lab Report Ready
-                </p>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {INCLUDED_FIELDS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 shadow-2xs text-xs font-medium text-slate-700"
+                  >
+                    <Icon className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Right Column: Interactive Dual Mockup Showcase */}
-          <div className="lg:col-span-6" id="client-demo">
-            <div className="corporate-card overflow-hidden bg-slate-50 border-slate-300">
-              {/* Tab Selector */}
-              <div className="bg-slate-900 p-2 sm:p-2.5 flex items-center justify-between text-white border-b border-slate-800">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  <button
-                    onClick={() => setActiveTab("packaging")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === "packaging"
-                        ? "bg-emerald-700 text-white shadow-xs"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800"
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>1. Commercial Pack</span>
-                  </button>
+          {/* Primary Action Button */}
+          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <button
+              type="button"
+              onClick={onGetStarted}
+              className="inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition-all cursor-pointer"
+            >
+              <span>Get Started — Create QR</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
 
-                  <button
-                    onClick={() => setActiveTab("mobile")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === "mobile"
-                        ? "bg-emerald-700 text-white shadow-xs"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800"
-                    }`}
-                  >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    <span>2. Scanned Screen</span>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveTab("pdf")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                      activeTab === "pdf"
-                        ? "bg-emerald-700 text-white shadow-xs"
-                        : "text-slate-400 hover:text-white hover:bg-slate-800"
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>3. Branded PDF Dossier</span>
-                  </button>
-                </div>
-
-                <span className="hidden sm:inline-block text-[11px] font-mono text-emerald-400 font-bold pr-2">
-                  Hari Sharnam Royal Ghee
+        {/* Right Column: Auto-Playing Interactive Software Workflow Player */}
+        <div className="lg:col-span-6 w-full">
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-xl overflow-hidden">
+            {/* Window Top Bar */}
+            <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+                <span className="text-xs font-semibold text-slate-300 ml-1.5">
+                  Live Software Workflow Preview
                 </span>
               </div>
 
-              {/* Showcase Body */}
-              <div className="p-4 sm:p-6 bg-slate-100/70">
-                {/* TAB 1: Real Product Packaging + Scannable QR */}
-                {activeTab === "packaging" && (
-                  <div className="space-y-4 animate-in fade-in duration-200">
-                    <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-                      <div className="relative h-64 sm:h-80 w-full bg-slate-900">
-                        <Image
-                          src="/images/fmcg-smart-packaging.jpg"
-                          alt="Hari Sharnam Royal Ghee Packaging with Scannable QR"
-                          fill
-                          className="object-cover"
-                          priority
-                        />
-                      </div>
-                      <div className="p-4 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              Client Case Study
-                            </span>
-                            <span className="text-xs font-mono text-slate-500">GTIN: 8939137480046</span>
-                          </div>
-                          <h2 className="text-base font-bold text-slate-900 mt-1">
-                            Hari Sharnam Royal Ghee (500 ml Pack)
-                          </h2>
-                          <p className="text-xs text-slate-600">
-                            M/s Hari Sharnam Enterprises • FSSAI Lic: 23322004000714
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={() => setActiveTab("mobile")}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-slate-900 bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
-                        >
-                          <span>View Scan Screen</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+              <button
+                type="button"
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-200 transition-colors cursor-pointer"
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="w-3 h-3 text-indigo-400" />
+                    <span>Playing</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3 h-3 text-indigo-400" />
+                    <span>Paused</span>
+                  </>
                 )}
+              </button>
+            </div>
 
-                {/* TAB 2: Mobile Phone Verification Frame */}
-                {activeTab === "mobile" && (
-                  <div className="flex justify-center animate-in fade-in duration-200">
-                    <div className="w-full max-w-sm bg-white rounded-3xl border-4 border-slate-800 shadow-xl overflow-hidden">
-                      {/* Mobile Top Notch/Speaker Bar */}
-                      <div className="bg-slate-800 px-4 py-2 flex items-center justify-between text-white text-[10px] font-mono">
-                        <span>9:41</span>
-                        <div className="w-12 h-2.5 bg-slate-700 rounded-full" />
-                        <span>5G 100%</span>
-                      </div>
-
-                      {/* Header inside phone */}
-                      <div className="bg-gradient-to-r from-red-800 to-amber-700 p-4 text-white">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-bold tracking-widest bg-white/20 px-2 py-0.5 rounded">
-                            Verified Passport
-                          </span>
-                          <div className="w-5 h-5 border border-white flex items-center justify-center p-0.5 bg-white">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-700" />
-                          </div>
-                        </div>
-                        <h3 className="text-lg font-black mt-2">Royal Ghee Premium</h3>
-                        <p className="text-xs text-amber-100">Hari Sharnam Enterprises</p>
-                      </div>
-
-                      {/* Scanned Table in phone */}
-                      <div className="p-3.5 text-xs divide-y divide-slate-100 space-y-2">
-                        <div className="flex justify-between pt-1">
-                          <span className="text-slate-500 font-bold uppercase text-[10px]">Product Id</span>
-                          <span className="font-mono font-bold text-slate-900">8939137480046</span>
-                        </div>
-                        <div className="flex justify-between pt-2">
-                          <span className="text-slate-500 font-bold uppercase text-[10px]">Brand Name</span>
-                          <span className="font-semibold text-slate-900">Hari Sharnam</span>
-                        </div>
-                        <div className="flex justify-between pt-2">
-                          <span className="text-slate-500 font-bold uppercase text-[10px]">Pack Size</span>
-                          <span className="font-medium text-slate-900">500 ml, 450g</span>
-                        </div>
-                        <div className="flex justify-between pt-2">
-                          <span className="text-slate-500 font-bold uppercase text-[10px]">Product MRP</span>
-                          <span className="font-bold text-slate-900">290 INR</span>
-                        </div>
-                        <div className="flex justify-between pt-2">
-                          <span className="text-slate-500 font-bold uppercase text-[10px]">FSSAI Reg No.</span>
-                          <span className="font-mono font-bold text-emerald-700">23322004000714</span>
-                        </div>
-                        <div className="pt-2">
-                          <span className="text-slate-500 font-bold uppercase text-[10px] block">Company Address</span>
-                          <span className="text-[11px] text-slate-700 leading-tight block mt-0.5">
-                            C-1/97 Welcome Seelampur, Delhi-110053
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* PDF Action in phone */}
-                      <div className="p-3 bg-slate-50 border-t border-slate-200">
-                        <button
-                          onClick={() => setActiveTab("pdf")}
-                          className="w-full py-2 bg-emerald-800 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs"
-                        >
-                          <Download className="w-3.5 h-3.5 text-emerald-200" />
-                          Open Official Dossier PDF
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB 3: Auto-Branded Official PDF Dossier Preview */}
-                {activeTab === "pdf" && (
-                  <div className="bg-white rounded-xl border border-slate-300 shadow-md p-4 text-xs animate-in fade-in duration-200">
-                    {/* PDF Header Band */}
-                    <div className="bg-red-900 text-white p-3 rounded-lg flex items-center justify-between mb-3 border-b-2 border-amber-500">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-sm tracking-wide">
-                            HARI SHARNAM ENTERPRISES
-                          </span>
-                          <span className="bg-amber-500 text-red-950 font-bold px-1.5 py-0.5 text-[9px] rounded">
-                            OFFICIAL DOSSIER
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-red-200">
-                          FSSAI Registration No: 23322004000714 (Valid Upto: 23-09-2030)
-                        </p>
-                      </div>
-                      <Award className="w-6 h-6 text-amber-400" />
-                    </div>
-
-                    {/* Section 1 in PDF */}
-                    <div className="border border-slate-200 rounded-md p-2.5 mb-2.5 bg-slate-50">
-                      <p className="font-bold text-slate-900 text-[11px] border-b border-slate-200 pb-1 mb-1.5 flex items-center justify-between">
-                        <span>SECTION 1: PRODUCT SPECIFICATION &amp; COMMERCIAL IDENTIFIERS</span>
-                        <span className="text-[9px] font-mono text-emerald-700">GS1 VERIFIED</span>
-                      </p>
-                      <div className="grid grid-cols-3 gap-2 text-[10px]">
-                        <div>
-                          <span className="text-slate-500 block font-semibold">Product Name</span>
-                          <span className="font-bold text-slate-900">Royal Ghee Premium</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block font-semibold">GTIN / Product ID</span>
-                          <span className="font-mono font-bold text-slate-900">8939137480046</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 block font-semibold">Net Qty / Pack Size</span>
-                          <span className="font-medium text-slate-900">500 ml, 450g</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Section 4 in PDF: Lab Report */}
-                    <div className="border border-slate-200 rounded-md p-2.5 mb-2.5 bg-slate-50">
-                      <p className="font-bold text-slate-900 text-[11px] border-b border-slate-200 pb-1 mb-1.5 flex items-center justify-between">
-                        <span>SECTION 4: ISO/FSSAI LAB REPORT NUTRITIONAL PROFILE</span>
-                        <span className="text-[9px] text-slate-500 font-mono">100g SERVING</span>
-                      </p>
-                      <div className="grid grid-cols-3 gap-1.5 text-[10px] text-slate-800">
-                        <div className="bg-white p-1 rounded border border-slate-200">
-                          <span className="text-slate-500 block text-[9px]">Energy Value</span>
-                          <span className="font-bold">899.1 Kcal</span>
-                        </div>
-                        <div className="bg-white p-1 rounded border border-slate-200">
-                          <span className="text-slate-500 block text-[9px]">Milk Fat</span>
-                          <span className="font-bold">99.8 g</span>
-                        </div>
-                        <div className="bg-white p-1 rounded border border-slate-200">
-                          <span className="text-slate-500 block text-[9px]">Baudouin Test</span>
-                          <span className="font-bold text-emerald-700">Absent (Pure)</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* PDF Footer simulation */}
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-[10px] text-slate-500">
-                      <div className="flex items-center gap-1.5">
-                        <QrCode className="w-4 h-4 text-slate-700" />
-                        <span>VP-IN-89391374 | Authenticated Passport</span>
-                      </div>
-                      <span className="text-emerald-700 font-bold">100% Meets FSSAI Standards</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom Client Testimonial Bar */}
-              <div className="bg-white px-4 py-3 border-t border-slate-200 flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">
-                  Tested with authentic packaging data from Hari Sharnam Enterprises
-                </span>
+            {/* Scene Selector Tabs */}
+            <div className="grid grid-cols-3 border-b border-slate-200 bg-slate-50">
+              {[
+                { id: 0, label: "1. Enter Details" },
+                { id: 1, label: "2. Logo Theme PDF" },
+                { id: 2, label: "3. Scan to Open PDF" },
+              ].map((tab) => (
                 <button
-                  onClick={onPreviewClient}
-                  className="font-bold text-emerald-800 hover:text-emerald-900 hover:underline cursor-pointer"
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveScene(tab.id as 0 | 1 | 2);
+                    setIsPlaying(false);
+                  }}
+                  className={`py-2.5 px-2 text-xs font-semibold transition-all border-b-2 cursor-pointer ${
+                    activeScene === tab.id
+                      ? "border-indigo-600 text-indigo-600 bg-white"
+                      : "border-transparent text-slate-500 hover:text-slate-800"
+                  }`}
                 >
-                  Load into Studio &rarr;
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Animated Stage Container */}
+            <div className="p-5 sm:p-6 min-h-[310px] sm:min-h-[340px] flex flex-col justify-between bg-gradient-to-b from-white to-slate-50">
+              {/* SCENE 0: Step-by-Step Form Input Simulation */}
+              {activeScene === 0 && (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                      Step-by-Step Wizard Form
+                    </span>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                      Step 1 to 4
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] font-semibold text-slate-400 uppercase">
+                        Firm Name &amp; Licence
+                      </div>
+                      <div className="text-xs font-bold text-slate-800 mt-1 truncate">
+                        Apex Consumer Goods Pvt. Ltd.
+                      </div>
+                      <div className="text-[11px] text-indigo-600 font-medium mt-0.5">
+                        Lic: #21409820001421
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                      <div className="text-[10px] font-semibold text-slate-400 uppercase">
+                        Contact &amp; Address
+                      </div>
+                      <div className="text-xs font-bold text-slate-800 mt-1 truncate">
+                        Plot 42, Industrial Area, Phase II
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                        +91 98000 12345 • info@apexfirm.in
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                        <ListChecks className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900">
+                          Product Image, Logo &amp; Ingredients
+                        </div>
+                        <div className="text-[11px] text-slate-600 truncate">
+                          Upload images &amp; add structured ingredients list
+                        </div>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold shrink-0">
+                      Next →
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* SCENE 1: Automatic Logo Color Extraction & PDF Build */}
+              {activeScene === 1 && (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                      Auto Brand-Color PDF Builder
+                    </span>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                      Dynamic Palette
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-lg bg-indigo-900 text-white font-bold text-xs flex items-center justify-center">
+                          LOGO
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">
+                            Colors Extracted from Uploaded Logo
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            Automatically themes the generated PDF document
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-indigo-900 border border-white shadow-xs" />
+                        <span className="w-5 h-5 rounded-full bg-indigo-600 border border-white shadow-xs" />
+                        <span className="w-5 h-5 rounded-full bg-indigo-100 border border-slate-200 shadow-xs" />
+                      </div>
+                    </div>
+
+                    {/* Mini PDF Preview Sheet */}
+                    <div className="rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
+                      <div className="bg-indigo-900 text-white px-3 py-2 flex items-center justify-between">
+                        <div>
+                          <div className="text-[11px] font-bold">
+                            OFFICIAL PRODUCT DOSSIER PDF
+                          </div>
+                          <div className="text-[9px] text-indigo-200">
+                            Firm Details • Licence • Product Image • Ingredients
+                          </div>
+                        </div>
+                        <FileText className="w-4 h-4 text-indigo-200" />
+                      </div>
+                      <div className="p-2.5 grid grid-cols-3 gap-2 text-[10px]">
+                        <div className="bg-white p-2 rounded border border-slate-200">
+                          <span className="text-slate-400 block">Firm &amp; Lic</span>
+                          <span className="font-bold text-slate-800">Verified</span>
+                        </div>
+                        <div className="bg-white p-2 rounded border border-slate-200">
+                          <span className="text-slate-400 block">Product Photo</span>
+                          <span className="font-bold text-slate-800">Embedded</span>
+                        </div>
+                        <div className="bg-white p-2 rounded border border-slate-200">
+                          <span className="text-slate-400 block">Ingredients</span>
+                          <span className="font-bold text-slate-800">Structured</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SCENE 2: QR Code Scan Opens PDF Anywhere */}
+              {activeScene === 2 && (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                      Permanent Scan-to-PDF QR Code
+                    </span>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                      Instant Mobile Open
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                    {/* Animated Scanner Box */}
+                    <div className="relative p-4 rounded-xl bg-white border border-slate-200 flex flex-col items-center justify-center">
+                      <div className="relative w-28 h-28 rounded-xl border-2 border-indigo-600 p-2 flex items-center justify-center bg-white overflow-hidden">
+                        <QrCode className="w-20 h-20 text-slate-900" />
+                        <div className="absolute left-1 right-1 h-0.5 bg-indigo-600 shadow-[0_0_8px_#4f46e5] animate-scan-line" />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-600 mt-2">
+                        Scan with Any Smartphone
+                      </span>
+                    </div>
+
+                    {/* Result on Phone */}
+                    <div className="p-3.5 rounded-xl bg-white border border-slate-200 space-y-2.5">
+                      <div className="flex items-center gap-2 text-indigo-600">
+                        <Smartphone className="w-4 h-4" />
+                        <span className="text-xs font-bold">
+                          Opens Product PDF Automatically
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Whenever anyone scans the downloaded QR code, the
+                        structured PDF with all firm &amp; product details opens
+                        immediately on their phone.
+                      </p>
+                      <div className="flex items-center gap-2 pt-1">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-[11px] font-semibold">
+                          <Download className="w-3 h-3" /> PDF Download
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px] font-semibold">
+                          <CheckCircle2 className="w-3 h-3 text-indigo-600" /> QR PNG/SVG
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Progress Bar */}
+              <div className="pt-4 mt-4 border-t border-slate-200/80 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2].map((idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveScene(idx as 0 | 1 | 2)}
+                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                        activeScene === idx
+                          ? "w-7 bg-indigo-600"
+                          : "w-2 bg-slate-300"
+                      }`}
+                      aria-label={`Scene ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={onGetStarted}
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Start Creating Now</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

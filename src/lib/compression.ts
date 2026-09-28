@@ -1,7 +1,7 @@
 import LZString from "lz-string";
 import { CompressedPayload, FormData, DEFAULT_BRAND_COLORS } from "@/types";
 
-export function compressFormData(formData: FormData): string {
+export function compressFormData(formData: FormData, microProductThumb?: string, microLogoThumb?: string): string {
   const payload: CompressedPayload = {
     fn: formData.firmName,
     bn: formData.brandName,
@@ -23,13 +23,24 @@ export function compressFormData(formData: FormData): string {
       ? JSON.stringify(formData.labParameters)
       : "",
     bc: formData.brandColors,
-    img: formData.productImageDataUrl?.startsWith("/")
-      ? formData.productImageDataUrl
-      : "",
+    pt: microProductThumb || undefined,
+    lg: microLogoThumb || undefined,
   };
 
   const json = JSON.stringify(payload);
-  return LZString.compressToEncodedURIComponent(json);
+  let compressed = LZString.compressToEncodedURIComponent(json);
+
+  // Ensure QR payload stays well below camera scan limit (~1800 chars)
+  if (compressed.length > 1750 && (payload.pt || payload.lg)) {
+    delete payload.lg;
+    compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload));
+  }
+  if (compressed.length > 1750 && payload.pt) {
+    delete payload.pt;
+    compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload));
+  }
+
+  return compressed;
 }
 
 export function decompressFormData(compressed: string): FormData | null {
@@ -47,20 +58,31 @@ export function decompressFormData(compressed: string): FormData | null {
       }
     }
 
-    // Fallback image for Hari Sharnam sample or if specified
-    const productImage = p.img || (p.pi === "8939137480046" ? "/images/royal-ghee-product.jpg" : null);
+    // Try localStorage cache on the same device first for full resolution images
+    let cachedProductImg: string | null = p.pt || null;
+    let cachedLogoImg: string | null = p.lg || null;
+    if (typeof window !== "undefined" && p.pi) {
+      try {
+        const localProd = localStorage.getItem(`vp_prod_${p.pi}`);
+        const localLogo = localStorage.getItem(`vp_logo_${p.pi}`);
+        if (localProd) cachedProductImg = localProd;
+        if (localLogo) cachedLogoImg = localLogo;
+      } catch {
+        // ignore storage errors
+      }
+    }
 
     return {
       firmName: p.fn || "",
       brandName: p.bn || p.fn || "",
       firmAddress: p.fa || "",
       licenceNumber: p.ln || "",
-      licenceType: p.lt || "FSSAI Registration",
+      licenceType: p.lt || "FSSAI / Regulatory Licence",
       licenceValidUpto: p.lu || "",
-      productName: p.pn || "Standard Packaged Product",
-      productId: p.pi || "8939137480046",
-      netQuantity: p.nq || "Standard Unit",
-      mrp: p.mr || "MRP (Inclusive of all taxes)",
+      productName: p.pn || p.bn || p.fn || "Registered Product",
+      productId: p.pi || "",
+      netQuantity: p.nq || "",
+      mrp: p.mr || "",
       dietaryMark: p.dm || "veg",
       batchAndDate: p.bd || "",
       mobile: p.mb || "",
@@ -68,8 +90,8 @@ export function decompressFormData(compressed: string): FormData | null {
       ingredients: p.ig ? p.ig.split("|").filter(Boolean) : [],
       storageInstructions: p.si || "",
       labParameters: labParameters,
-      productImageDataUrl: productImage,
-      logoDataUrl: null,
+      productImageDataUrl: cachedProductImg,
+      logoDataUrl: cachedLogoImg,
       brandColors: p.bc || DEFAULT_BRAND_COLORS,
     };
   } catch {
@@ -77,10 +99,6 @@ export function decompressFormData(compressed: string): FormData | null {
   }
 }
 
-/**
- * Estimate QR payload size (base URL + compressed data)
- * Keep total URL under 1600 chars for reliable instant camera scanning
- */
 export function estimatePayloadSize(compressed: string, baseUrl: string): number {
   return (baseUrl + "?v=" + compressed).length;
 }
