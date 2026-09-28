@@ -1,178 +1,129 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { QrCode, Zap } from "lucide-react";
+import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
+import ComplianceStrip from "@/components/ComplianceStrip";
+import HowItWorks from "@/components/HowItWorks";
+import IndustryUseCases from "@/components/IndustryUseCases";
 import WizardForm from "@/components/WizardForm";
 import OutputScreen from "@/components/OutputScreen";
-import { FormData } from "@/types";
-
-type AppState = "hero" | "wizard" | "output";
+import FAQSection from "@/components/FAQSection";
+import Footer from "@/components/Footer";
+import { FormData, SAMPLE_CLIENT_DATA } from "@/types";
+import { QrCode, Sparkles, CheckCircle2 } from "lucide-react";
 
 export default function HomePage() {
-  const [appState, setAppState] = useState<AppState>("hero");
-  const [completedData, setCompletedData] = useState<FormData | null>(null);
-  const wizardSectionRef = useRef<HTMLDivElement>(null);
+  const [formData, setFormData] = useState<FormData | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const builderSectionRef = useRef<HTMLDivElement>(null);
 
-  const scrollToWizard = () => {
-    wizardSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToBuilder = () => {
+    if (builderSectionRef.current) {
+      builderSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
-  const handleGetStarted = () => {
-    setAppState("wizard");
-    setTimeout(scrollToWizard, 100);
+  const handleStartBuilder = () => {
+    setIsCompleted(false);
+    setTimeout(scrollToBuilder, 50);
+  };
+
+  const handleLoadSampleClient = () => {
+    setFormData(SAMPLE_CLIENT_DATA);
+    setIsCompleted(false);
+    setTimeout(scrollToBuilder, 50);
+  };
+
+  const handlePreviewClient = () => {
+    setFormData(SAMPLE_CLIENT_DATA);
+    setIsCompleted(false);
+    setTimeout(scrollToBuilder, 50);
   };
 
   const handleFormComplete = (data: FormData) => {
-    setCompletedData(data);
-    setAppState("output");
-    setTimeout(scrollToWizard, 100);
+    setFormData(data);
+    setIsCompleted(true);
+    setTimeout(scrollToBuilder, 50);
+  };
+
+  const handleEdit = () => {
+    setIsCompleted(false);
+    setTimeout(scrollToBuilder, 50);
   };
 
   const handleReset = () => {
-    setCompletedData(null);
-    setAppState("hero");
+    setFormData(null);
+    setIsCompleted(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <div style={{ minHeight: "100vh" }}>
-      {/* Sticky Nav */}
-      <nav
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          padding: "0 24px",
-          height: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          background: "rgba(2, 6, 23, 0.8)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.05)",
-        }}
+    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800">
+      {/* 1. Top Regulatory Announcement Bar & Sticky Header */}
+      <Header
+        onStartBuilder={handleStartBuilder}
+        onLoadSampleClient={handleLoadSampleClient}
+      />
+
+      {/* 2. Enterprise Hero Section with Dual Mockup Showcase */}
+      <HeroSection
+        onStartBuilder={handleStartBuilder}
+        onPreviewClient={handlePreviewClient}
+      />
+
+      {/* 3. Compliance & Industry Standards Strip */}
+      <ComplianceStrip />
+
+      {/* 4. "How It Works" Section */}
+      <HowItWorks onStartBuilder={handleStartBuilder} />
+
+      {/* 5. Interactive 5-Step Product & Compliance QR Builder Studio */}
+      <section
+        ref={builderSectionRef}
+        id="qr-builder-section"
+        className="py-16 lg:py-24 bg-slate-100/70 border-b border-slate-200"
       >
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: "linear-gradient(135deg, #3b82f6, #6366f1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <QrCode size={17} color="white" />
-          </div>
-          <span
-            className="font-display"
-            style={{
-              fontSize: "1rem",
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
-              background: "linear-gradient(135deg, #fff, #94a3b8)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-            }}
-          >
-            VeriPack QR
-          </span>
-        </div>
-
-        {/* Nav CTA */}
-        {appState !== "wizard" && appState !== "output" && (
-          <button
-            onClick={handleGetStarted}
-            className="btn-primary"
-            style={{ padding: "8px 18px", fontSize: "0.85rem", borderRadius: 8 }}
-            id="nav-create-btn"
-          >
-            <Zap size={14} />
-            Create QR
-          </button>
-        )}
-
-        {(appState === "wizard" || appState === "output") && (
-          <button
-            onClick={handleReset}
-            className="btn-secondary"
-            style={{ padding: "7px 14px", fontSize: "0.82rem" }}
-          >
-            ← Home
-          </button>
-        )}
-      </nav>
-
-      {/* Hero Section */}
-      {appState === "hero" && (
-        <HeroSection onGetStarted={handleGetStarted} />
-      )}
-
-      {/* Wizard / Output Section */}
-      {(appState === "wizard" || appState === "output") && (
-        <div
-          ref={wizardSectionRef}
-          style={{
-            minHeight: "100vh",
-            paddingTop: 80,
-            paddingBottom: 60,
-            padding: "80px 24px 60px",
-          }}
-        >
-          {/* Section Header */}
-          {appState === "wizard" && (
-            <div style={{ textAlign: "center", marginBottom: 40 }}>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "5px 14px",
-                  background: "rgba(99,102,241,0.1)",
-                  border: "1px solid rgba(99,102,241,0.2)",
-                  borderRadius: 99,
-                  marginBottom: 16,
-                }}
-              >
-                <Zap size={13} color="#818cf8" />
-                <span style={{ fontSize: "0.78rem", color: "#a5b4fc", fontWeight: 600 }}>
-                  4-Step Guided Wizard
-                </span>
-              </div>
-              <h2
-                className="font-display"
-                style={{
-                  fontSize: "clamp(1.6rem, 4vw, 2.4rem)",
-                  fontWeight: 800,
-                  marginBottom: 10,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Create Your <span className="text-gradient">Product Passport</span>
-              </h2>
-              <p style={{ fontSize: "0.92rem", color: "var(--text-secondary)", maxWidth: 480, margin: "0 auto" }}>
-                Fill in the details below. We&apos;ll auto-generate a branded PDF dossier and a scannable QR code.
-              </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold mb-3">
+              <QrCode className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Interactive Compliance Studio</span>
             </div>
-          )}
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+              {isCompleted ? "Your Verified Product Passport is Ready" : "Generate Product QR & Official Dossier"}
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 mt-2">
+              {isCompleted
+                ? "Download print-ready QR stickers for packaging or the official auto-branded compliance PDF."
+                : "Fill in the statutory packaging details below or load our real client example to test the full flow in 1-click."}
+            </p>
+          </div>
 
-          {appState === "wizard" && (
-            <WizardForm onComplete={handleFormComplete} />
-          )}
-
-          {appState === "output" && completedData && (
-            <OutputScreen formData={completedData} onReset={handleReset} />
+          {/* Builder or Output Screen */}
+          {isCompleted && formData ? (
+            <OutputScreen
+              formData={formData}
+              onEdit={handleEdit}
+              onReset={handleReset}
+            />
+          ) : (
+            <WizardForm
+              onComplete={handleFormComplete}
+              initialData={formData}
+            />
           )}
         </div>
-      )}
+      </section>
+
+      {/* 6. Industry Use-Cases Section */}
+      <IndustryUseCases onLoadSample={handleLoadSampleClient} />
+
+      {/* 7. Corporate FAQ Section */}
+      <FAQSection />
+
+      {/* 8. Full Corporate Multi-Column Footer */}
+      <Footer />
     </div>
   );
 }

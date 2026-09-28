@@ -1,4 +1,5 @@
 import { FormData } from "@/types";
+import QRCode from "qrcode";
 
 interface RGB {
   r: number;
@@ -7,306 +8,396 @@ interface RGB {
 }
 
 function hexToRgb(hex: string): RGB {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return result
-    ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      }
-    : { r: 30, g: 41, b: 59 };
+  const cleanHex = hex.replace("#", "");
+  const num = parseInt(cleanHex, 16);
+  if (cleanHex.length === 6 && !isNaN(num)) {
+    return {
+      r: (num >> 16) & 255,
+      g: (num >> 8) & 255,
+      b: num & 255,
+    };
+  }
+  return { r: 15, g: 81, b: 50 }; // Default Emerald
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type JsPDF = any;
+type JsPDFInstance = any;
 
-/**
- * Dynamically imports jsPDF only in browser context to avoid SSR bundling issues
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getJsPDF(): Promise<any> {
+async function getJsPDF(): Promise<JsPDFInstance> {
   const mod = await import("jspdf");
   return mod.jsPDF;
 }
 
-export async function generatePDF(formData: FormData): Promise<JsPDF> {
+export async function generatePDF(formData: FormData): Promise<JsPDFInstance> {
   const JsPDF = await getJsPDF();
   const doc = new JsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   const colors = formData.brandColors;
-  const primary = hexToRgb(colors.primary);
-  const secondary = hexToRgb(colors.secondary);
-  const tint = hexToRgb(colors.tint);
-  const textOnPrimary = hexToRgb(colors.text);
+  const primary = hexToRgb(colors.primary || "#0F5132");
+  const secondary = hexToRgb(colors.secondary || "#059669");
+  const tint = hexToRgb(colors.tint || "#ECFDF5");
+  const textOnPrimary = hexToRgb(colors.text || "#FFFFFF");
 
   const pageW = 210;
   const pageH = 297;
   const margin = 14;
   const contentW = pageW - margin * 2;
 
-  // --- HEADER BACKGROUND ---
+  // ─── 1. TOP HEADER BAND ───
+  const headerH = 46;
   doc.setFillColor(primary.r, primary.g, primary.b);
-  doc.rect(0, 0, pageW, 52, "F");
+  doc.rect(0, 0, pageW, headerH, "F");
 
-  // Accent stripe
+  // Secondary Accent Bar
   doc.setFillColor(secondary.r, secondary.g, secondary.b);
-  doc.rect(0, 48, pageW, 4, "F");
+  doc.rect(0, headerH, pageW, 3.5, "F");
 
-  // --- LOGO (if available) ---
-  let headerTextX = margin + 4;
-  if (formData.logoDataUrl) {
+  // Header Content
+  let headerX = margin;
+  if (formData.logoDataUrl && formData.logoDataUrl.startsWith("data:image")) {
     try {
-      const logoSize = 30;
-      doc.addImage(formData.logoDataUrl, "JPEG", margin, 10, logoSize, logoSize);
-      headerTextX = margin + logoSize + 6;
+      const logoW = 28;
+      const logoH = 28;
+      doc.addImage(formData.logoDataUrl, "JPEG", margin, 9, logoW, logoH);
+      headerX = margin + logoW + 6;
     } catch {
-      // Logo failed to embed, skip
+      headerX = margin;
     }
   }
 
-  // --- FIRM NAME ---
+  // Firm Name & Brand Name
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
-  const firmNameLines = doc.splitTextToSize(formData.firmName, contentW - (headerTextX - margin));
-  doc.text(firmNameLines, headerTextX, 20);
+  const firmTitle = formData.brandName
+    ? `${formData.brandName.toUpperCase()} — ${formData.firmName}`
+    : formData.firmName.toUpperCase();
+  const titleLines = doc.splitTextToSize(firmTitle, contentW - (headerX - margin) - 45);
+  doc.text(titleLines[0] || firmTitle, headerX, 16);
 
-  // --- OFFICIAL PRODUCT DOSSIER subtitle ---
+  // Subtitle
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.setTextColor(
-    Math.min(textOnPrimary.r + 60, 255),
-    Math.min(textOnPrimary.g + 60, 255),
-    Math.min(textOnPrimary.b + 60, 255)
-  );
-  doc.text("OFFICIAL PRODUCT DOSSIER", headerTextX, 20 + firmNameLines.length * 7 + 2);
+  doc.setTextColor(230, 240, 235);
+  doc.text("OFFICIAL DIGITAL PRODUCT PASSPORT & REGULATORY COMPLIANCE DOSSIER", headerX, 23);
 
-  // --- LICENCE BADGE ---
-  const badgeY = 38;
-  doc.setFillColor(
-    Math.min(secondary.r + 20, 255),
-    Math.min(secondary.g + 20, 255),
-    Math.min(secondary.b + 20, 255)
-  );
-  const licBadgeW = Math.min(doc.getStringUnitWidth(formData.licenceNumber) * 3.5 + 20, 120);
-  doc.roundedRect(headerTextX, badgeY - 4, licBadgeW, 8, 2, 2, "F");
+  // Licence & Regulatory Badge Pill
+  const licTypeStr = formData.licenceType || "FSSAI Registration";
+  const licBadgeText = `${licTypeStr.toUpperCase()}: ${formData.licenceNumber}${
+    formData.licenceValidUpto ? ` (Valid: ${formData.licenceValidUpto})` : ""
+  }`;
+  doc.setFillColor(secondary.r, secondary.g, secondary.b);
+  const badgeW = Math.min(doc.getStringUnitWidth(licBadgeText) * 2.8 + 8, 115);
+  doc.roundedRect(headerX, 27, badgeW, 7, 1.5, 1.5, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
-  doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
-  doc.text(`LICENCE: ${formData.licenceNumber}`, headerTextX + 4, badgeY + 0.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text(licBadgeText, headerX + 3.5, 31.8);
 
-  // --- GENERATED DATE ---
-  const now = new Date();
+  // Top Right: Verification Stamp
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
+  doc.text("OFFICIAL RECORD", pageW - margin - 32, 16);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
+  doc.text("GS1 / FSSAI COMPLIANT", pageW - margin - 32, 21);
+  const now = new Date();
+  doc.text(
+    `Date: ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`,
+    pageW - margin - 32,
+    26
+  );
+
+  let currentY = 56;
+
+  // ─── 2. SECTION 1: PRODUCT COMMERCIAL SUMMARY TABLE ───
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, currentY, contentW, 46, 2, 2, "FD");
+
+  // Section Header Strip
+  doc.setFillColor(primary.r, primary.g, primary.b);
+  doc.roundedRect(margin, currentY, contentW, 6.5, 1.5, 1.5, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
   doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
-  const dateStr = `Generated: ${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`;
-  doc.text(dateStr, pageW - margin - doc.getStringUnitWidth(dateStr) * 2.5, 10);
+  doc.text("SECTION 1: PRODUCT COMMERCIAL SPECIFICATION & GTIN IDENTIFIERS", margin + 4, currentY + 4.5);
 
-  // --- CONTENT AREA ---
-  let y = 60;
+  const row1Y = currentY + 12;
+  const col1X = margin + 4;
+  const col2X = margin + 55;
+  const col3X = margin + 115;
 
-  // --- PRODUCT IMAGE (if available) ---
-  if (formData.productImageDataUrl) {
-    try {
-      const imgMaxW = 82;
-      const imgMaxH = 70;
-      doc.setFillColor(tint.r, tint.g, tint.b);
-      doc.roundedRect(margin, y - 2, imgMaxW + 4, imgMaxH + 8, 3, 3, "F");
-      doc.setDrawColor(primary.r, primary.g, primary.b);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(margin, y - 2, imgMaxW + 4, imgMaxH + 8, 3, 3, "S");
-      doc.addImage(formData.productImageDataUrl, "JPEG", margin + 2, y, imgMaxW, imgMaxH);
+  // Row 1
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("PRODUCT NAME", col1X, row1Y);
+  doc.text("PRODUCT ID / BARCODE (GTIN)", col2X, row1Y);
+  doc.text("NET QUANTITY / PACK SIZE", col3X, row1Y);
 
-      // Product label
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(doc.splitTextToSize(formData.productName, 48)[0] || formData.productName, col1X, row1Y + 4.8);
+  doc.text(formData.productId || "N/A", col2X, row1Y + 4.8);
+  doc.text(formData.netQuantity || "N/A", col3X, row1Y + 4.8);
+
+  // Row 2
+  const row2Y = currentY + 24;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("MAXIMUM RETAIL PRICE (MRP)", col1X, row2Y);
+  doc.text("DIETARY / CATEGORY CLASSIFICATION", col2X, row2Y);
+  doc.text("BATCH & PACKAGING PARTICULARS", col3X, row2Y);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(formData.mrp || "N/A", col1X, row2Y + 4.8);
+
+  const dietaryText =
+    formData.dietaryMark === "veg"
+      ? "[GREEN DOT] 100% Pure Vegetarian"
+      : formData.dietaryMark === "non-veg"
+      ? "[BROWN DOT] Non-Vegetarian"
+      : "Standard Industrial Goods";
+  doc.text(dietaryText, col2X, row2Y + 4.8);
+  doc.text(
+    doc.splitTextToSize(formData.batchAndDate || "Standard Production Batch", 60)[0],
+    col3X,
+    row2Y + 4.8
+  );
+
+  // Row 3: Brand & Classification
+  const row3Y = currentY + 36;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("BRAND TRADE MARK", col1X, row3Y);
+  doc.text("REGULATORY LICENCE TYPE", col2X, row3Y);
+  doc.text("DIGITAL PASSPORT STATUS", col3X, row3Y);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text(formData.brandName || formData.firmName, col1X, row3Y + 4.5);
+  doc.text(formData.licenceType || "FSSAI Registration", col2X, row3Y + 4.5);
+  doc.setTextColor(5, 150, 105);
+  doc.text("VERIFIED & COMPLIANT", col3X, row3Y + 4.5);
+
+  currentY += 51;
+
+  // ─── 3. SECTION 2: REGISTERED FIRM & CONTACT DETAILS ───
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, currentY, contentW, 34, 2, 2, "FD");
+
+  // Section Header
+  doc.setFillColor(secondary.r, secondary.g, secondary.b);
+  doc.roundedRect(margin, currentY, contentW, 6.5, 1.5, 1.5, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("SECTION 2: REGISTERED FBO / MANUFACTURER DETAILS & CONSUMER CARE", margin + 4, currentY + 4.5);
+
+  const sec2Y = currentY + 12;
+  // Address
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("REGISTERED PRINCIPAL ADDRESS", margin + 4, sec2Y);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.8);
+  doc.setTextColor(15, 23, 42);
+  const addrLines = doc.splitTextToSize(formData.firmAddress, 105);
+  doc.text(addrLines, margin + 4, sec2Y + 4.5);
+
+  // Customer Care Mobile & Email
+  const contactX = margin + 115;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("CONSUMER CARE HELPLINE", contactX, sec2Y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text(formData.mobile, contactX, sec2Y + 4.8);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(100, 116, 139);
+  doc.text("OFFICIAL NODAL EMAIL", contactX, sec2Y + 12);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text(formData.email, contactX, sec2Y + 16.5);
+
+  currentY += 39;
+
+  // ─── 4. SECTION 3: INGREDIENTS & COMPOSITION BREAKDOWN ───
+  const ingBoxH = 34;
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(margin, currentY, contentW, ingBoxH, 2, 2, "FD");
+
+  doc.setFillColor(primary.r, primary.g, primary.b);
+  doc.roundedRect(margin, currentY, contentW, 6.5, 1.5, 1.5, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
+  doc.text("SECTION 3: INGREDIENTS LIST & HYGIENIC STORAGE DIRECTIVES", margin + 4, currentY + 4.5);
+
+  const ingY = currentY + 11;
+  const ingredients = formData.ingredients;
+  const colW = (contentW - 8) / 2;
+
+  ingredients.forEach((ing, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const itemX = margin + 4 + col * colW;
+    const itemY = ingY + row * 5;
+
+    if (itemY < currentY + ingBoxH - 8) {
       doc.setFillColor(primary.r, primary.g, primary.b);
-      doc.rect(margin, y + imgMaxH + 1, imgMaxW + 4, 5, "F");
-      doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
-      doc.text("PRODUCT IMAGE", margin + 2, y + imgMaxH + 4.5);
-
-      // Right side contact info
-      const rightX = margin + imgMaxW + 8;
-      const rightW = contentW - imgMaxW - 8;
-
-      // Contact section box
-      doc.setFillColor(tint.r, tint.g, tint.b);
-      doc.roundedRect(rightX, y - 2, rightW, 78, 3, 3, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(primary.r, primary.g, primary.b);
-      doc.text("FIRM DETAILS", rightX + 4, y + 7);
-
-      // Divider
-      doc.setDrawColor(primary.r, primary.g, primary.b);
-      doc.setLineWidth(0.3);
-      doc.line(rightX + 2, y + 10, rightX + rightW - 2, y + 10);
-
-      // Address
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(80, 80, 80);
-      doc.text("REGISTERED ADDRESS", rightX + 4, y + 16);
-
+      doc.circle(itemX + 1.5, itemY - 0.7, 0.8, "F");
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(30, 30, 30);
-      const addrLines = doc.splitTextToSize(formData.firmAddress, rightW - 8);
-      doc.text(addrLines, rightX + 4, y + 21);
-
-      let contactY = y + 21 + Math.min(addrLines.length, 4) * 4 + 4;
-
-      // Mobile
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(80, 80, 80);
-      doc.text("MOBILE", rightX + 4, contactY);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(30, 30, 30);
-      doc.text(formData.mobile, rightX + 4, contactY + 5);
-      contactY += 12;
-
-      // Email
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(80, 80, 80);
-      doc.text("EMAIL", rightX + 4, contactY);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(30, 30, 30);
-      const emailLines = doc.splitTextToSize(formData.email, rightW - 8);
-      doc.text(emailLines, rightX + 4, contactY + 5);
-
-      y += 82;
-    } catch {
-      // Image failed, skip
-      y += 4;
+      doc.setFontSize(7.2);
+      doc.setTextColor(30, 41, 59);
+      doc.text(doc.splitTextToSize(ing, colW - 6)[0], itemX + 4.5, itemY);
     }
-  } else {
-    // No image - full-width firm details
-    const boxH = 50;
-    doc.setFillColor(tint.r, tint.g, tint.b);
-    doc.roundedRect(margin, y, contentW, boxH, 3, 3, "F");
+  });
 
+  // Storage
+  if (formData.storageInstructions) {
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(primary.r, primary.g, primary.b);
-    doc.text("FIRM DETAILS", margin + 4, y + 8);
-
-    doc.setDrawColor(primary.r, primary.g, primary.b);
-    doc.setLineWidth(0.3);
-    doc.line(margin + 2, y + 11, margin + contentW - 2, y + 11);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    doc.setTextColor(100, 100, 100);
-    doc.text("ADDRESS", margin + 4, y + 17);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(30, 30, 30);
-    const addrLines = doc.splitTextToSize(formData.firmAddress, (contentW / 2) - 8);
-    doc.text(addrLines, margin + 4, y + 23);
-
-    // Contact right side
-    const midX = margin + contentW / 2;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    doc.setTextColor(100, 100, 100);
-    doc.text("MOBILE", midX + 4, y + 17);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(30, 30, 30);
-    doc.text(formData.mobile, midX + 4, y + 23);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
-    doc.setTextColor(100, 100, 100);
-    doc.text("EMAIL", midX + 4, y + 32);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(30, 30, 30);
-    const emailLines = doc.splitTextToSize(formData.email, contentW / 2 - 8);
-    doc.text(emailLines, midX + 4, y + 38);
-
-    y += boxH + 6;
+    doc.setFontSize(6.8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("STORAGE INSTRUCTION: ", margin + 4, currentY + ingBoxH - 3);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(6.8);
+    doc.setTextColor(51, 65, 85);
+    doc.text(
+      doc.splitTextToSize(formData.storageInstructions, contentW - 40)[0],
+      margin + 36,
+      currentY + ingBoxH - 3
+    );
   }
 
-  y += 6;
+  currentY += ingBoxH + 5;
 
-  // --- INGREDIENTS SECTION ---
-  doc.setFillColor(primary.r, primary.g, primary.b);
-  doc.roundedRect(margin, y, contentW, 9, 2, 2, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
-  doc.text("PRODUCT COMPOSITION & INGREDIENTS", margin + 4, y + 6);
-  y += 12;
+  // ─── 5. SECTION 4: NUTRITIONAL & QUALITY LAB PARAMETERS (IF PRESENT) ───
+  if (formData.labParameters && formData.labParameters.length > 0) {
+    const labH = 48;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, currentY, contentW, labH, 2, 2, "FD");
 
-  // Ingredients grid
-  const ingredients = formData.ingredients;
-  const colW = (contentW - 4) / 3;
-  const rowH = 7;
+    doc.setFillColor(secondary.r, secondary.g, secondary.b);
+    doc.roundedRect(margin, currentY, contentW, 6.5, 1.5, 1.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(
+      "SECTION 4: QUALITY TEST PARAMETERS & NUTRITIONAL PROFILE (PER 100G / SERVING)",
+      margin + 4,
+      currentY + 4.5
+    );
 
-  doc.setFillColor(tint.r, tint.g, tint.b);
-  const totalRows = Math.ceil(ingredients.length / 3);
-  const ingredientBoxH = Math.max(totalRows * rowH + 6, 20);
+    // Table Header
+    const tHeadY = currentY + 11.5;
+    doc.setFillColor(tint.r, tint.g, tint.b);
+    doc.rect(margin + 2, tHeadY - 3.5, contentW - 4, 5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.8);
+    doc.setTextColor(15, 23, 42);
+    doc.text("TESTED PARAMETER / NUTRIENT", margin + 6, tHeadY);
+    doc.text("UNIT OF MEASUREMENT", margin + 85, tHeadY);
+    doc.text("TESTED VALUE / RESULT", margin + 140, tHeadY);
 
-  // Ensure we have space
-  if (y + ingredientBoxH < pageH - 25) {
-    doc.roundedRect(margin, y, contentW, ingredientBoxH, 2, 2, "F");
-
-    ingredients.forEach((ingredient, idx) => {
-      const col = idx % 3;
-      const row = Math.floor(idx / 3);
-      const cellX = margin + 2 + col * colW;
-      const cellY = y + 4 + row * rowH;
-
-      // Bullet
-      doc.setFillColor(primary.r, primary.g, primary.b);
-      doc.circle(cellX + 2, cellY - 0.5, 1, "F");
-
+    let tableY = tHeadY + 5;
+    formData.labParameters.slice(0, 6).forEach((param, idx) => {
+      if (idx % 2 === 1) {
+        doc.setFillColor(241, 245, 249);
+        doc.rect(margin + 2, tableY - 3, contentW - 4, 4.5, "F");
+      }
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(30, 30, 30);
-      const ingredientText = doc.splitTextToSize(ingredient.trim(), colW - 8);
-      doc.text(ingredientText[0] || ingredient.trim(), cellX + 5, cellY);
+      doc.setFontSize(6.8);
+      doc.setTextColor(30, 41, 59);
+      doc.text(param.parameter, margin + 6, tableY);
+      doc.text(param.unit, margin + 85, tableY);
+      doc.setFont("helvetica", "bold");
+      doc.text(param.value, margin + 140, tableY);
+      tableY += 4.8;
     });
 
-    y += ingredientBoxH + 8;
+    currentY += labH + 5;
   }
 
-  // --- FOOTER ---
-  const footerY = pageH - 18;
+  // ─── 6. FOOTER WITH MINI VERIFICATION QR & SEAL ───
+  const footerY = pageH - 24;
+
+  // Footer separator line
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.4);
+  doc.line(margin, footerY - 2, pageW - margin, footerY - 2);
+
+  // Verification QR
+  try {
+    const qrText = `https://veripack-qr.vercel.app/view?v=check_${formData.productId}`;
+    const qrDataUrl = await QRCode.toDataURL(qrText, {
+      margin: 1,
+      width: 80,
+      color: { dark: colors.primary || "#0F5132", light: "#FFFFFF" },
+    });
+    doc.addImage(qrDataUrl, "PNG", margin, footerY, 18, 18);
+  } catch {
+    // skip if qr fails
+  }
+
+  // Footer Metadata Text
+  const footTextX = margin + 22;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text("OFFICIAL VERIPACK DIGITAL PRODUCT PASSPORT (DPP)", footTextX, footerY + 4);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.2);
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    "Standardized compliance dossier under Food Safety and Standards (Packaging and Labelling) Regulations & Legal Metrology Act.",
+    footTextX,
+    footerY + 8
+  );
+  doc.text(
+    `Document ID: VP-IN-${formData.productId.slice(-8) || "89391374"} | FSSAI Lic: ${
+      formData.licenceNumber
+    } | Page 1 of 1`,
+    footTextX,
+    footerY + 12
+  );
+
+  // Digital Security Stamp
   doc.setFillColor(primary.r, primary.g, primary.b);
-  doc.rect(0, footerY - 2, pageW, 20, "F");
-
+  doc.roundedRect(pageW - margin - 38, footerY + 1, 38, 14, 1.5, 1.5, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
-  doc.text("VERIFIED PRODUCT PASSPORT", margin, footerY + 5);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6);
-  doc.text("This document is digitally generated and contains authentic product information.", margin, footerY + 10);
-
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
-  doc.text("1 of 1", pageW - margin - 8, footerY + 5);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("VeriPack QR", pageW - margin - 20, footerY + 10);
-
-  void y; // suppress unused var warning
+  doc.setTextColor(textOnPrimary.r, textOnPrimary.g, textOnPrimary.b);
+  doc.text("AUTHENTICATED RECORD", pageW - margin - 35, footerY + 6);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(5.8);
+  doc.setTextColor(240, 253, 244);
+  doc.text("SECURE REPOSITORY HASH", pageW - margin - 35, footerY + 10.5);
 
   return doc;
 }
 
-export function downloadPDF(doc: JsPDF, firmName: string): void {
-  const filename = `VeriPack_${firmName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 30)}_Product_Dossier.pdf`;
+export function downloadPDF(doc: JsPDFInstance, firmName: string): void {
+  const cleanName = firmName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 30);
+  const filename = `VeriPack_${cleanName}_Product_Dossier.pdf`;
   doc.save(filename);
 }

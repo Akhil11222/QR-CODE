@@ -1,519 +1,381 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
-  Download, QrCode, FileText, RefreshCcw, Share2,
-  CheckCircle, Loader2, Building2, Mail, Phone,
-  MapPin, Shield, AlertTriangle, ExternalLink
+  Download,
+  Copy,
+  Check,
+  ExternalLink,
+  Edit3,
+  RefreshCw,
+  QrCode,
+  FileText,
+  Printer,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Award,
 } from "lucide-react";
 import { FormData } from "@/types";
-import { generatePDF, downloadPDF } from "@/lib/pdfGenerator";
-import { generateQRDataUrl, downloadQRPng, downloadQRSvg, checkQRLength } from "@/lib/qrGenerator";
 import { compressFormData } from "@/lib/compression";
-
+import { generateQRDataUrl, downloadQRPng, downloadQRSvg } from "@/lib/qrGenerator";
+import { generatePDF, downloadPDF } from "@/lib/pdfGenerator";
+import Image from "next/image";
 
 interface OutputScreenProps {
   formData: FormData;
+  onEdit: () => void;
   onReset: () => void;
 }
 
-export default function OutputScreen({ formData, onReset }: OutputScreenProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [pdfDoc, setPdfDoc] = useState<any | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [qrUrl, setQrUrl] = useState<string>("");
-  const [qrWarning, setQrWarning] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(true);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [downloadingQr, setDownloadingQr] = useState(false);
+export default function OutputScreen({ formData, onEdit, onReset }: OutputScreenProps) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [scanUrl, setScanUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
-
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [isDownloadingPNG, setIsDownloadingPNG] = useState(false);
+  const [isDownloadingSVG, setIsDownloadingSVG] = useState(false);
 
   useEffect(() => {
-    async function generate() {
-      try {
-        // Generate PDF
-        const doc = await generatePDF(formData);
-        setPdfDoc(doc);
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://veripack-qr.vercel.app";
+    const compressed = compressFormData(formData);
+    const fullUrl = `${origin}/view?v=${compressed}`;
+    setScanUrl(fullUrl);
 
-        // Build QR URL
-        const baseUrl =
-          typeof window !== "undefined"
-            ? `${window.location.origin}/view`
-            : "https://veripack-qr.vercel.app/view";
-        const compressed = compressFormData(formData);
-        const fullUrl = `${baseUrl}?v=${compressed}`;
-        setQrUrl(fullUrl);
-
-        // Check QR length
-        const check = checkQRLength(fullUrl);
-        if (!check.ok) setQrWarning(check.warning || null);
-
-        // Generate QR code image
-        const qrImg = await generateQRDataUrl(fullUrl, {
-          color: formData.brandColors.primary,
-          size: 400,
-        });
-        setQrDataUrl(qrImg);
-      } catch (err) {
-        console.error("Generation error:", err);
-      } finally {
-        setGenerating(false);
-      }
-    }
-
-    generate();
+    generateQRDataUrl(fullUrl, {
+      color: formData.brandColors.primary || "#0F5132",
+      size: 600,
+    }).then(setQrDataUrl);
   }, [formData]);
 
-  const handleDownloadPdf = useCallback(async () => {
-    if (!pdfDoc) return;
-    setDownloadingPdf(true);
-    try {
-      downloadPDF(pdfDoc, formData.firmName);
-    } finally {
-      setDownloadingPdf(false);
-    }
-  }, [pdfDoc, formData.firmName]);
-
-  const handleDownloadQrPng = useCallback(async () => {
-    if (!qrUrl) return;
-    setDownloadingQr(true);
-    try {
-      await downloadQRPng(qrUrl, formData.firmName, formData.brandColors.primary);
-    } finally {
-      setDownloadingQr(false);
-    }
-  }, [qrUrl, formData.firmName, formData.brandColors.primary]);
-
-  const handleDownloadQrSvg = useCallback(async () => {
-    if (!qrUrl) return;
-    await downloadQRSvg(qrUrl, formData.firmName, formData.brandColors.primary);
-  }, [qrUrl, formData.firmName, formData.brandColors.primary]);
-
-  const handleCopyUrl = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(qrUrl);
+  const handleCopy = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(scanUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // Fallback
     }
-  }, [qrUrl]);
+  };
 
-  if (generating) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 320,
-          gap: 20,
-        }}
-      >
-        <div
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: "50%",
-            border: `3px solid ${formData.brandColors.primary}40`,
-            borderTop: `3px solid ${formData.brandColors.primary}`,
-            animation: "spin 0.9s linear infinite",
-          }}
-        />
-        <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)" }}>
-            Generating your Official Dossier...
-          </p>
-          <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 4 }}>
-            Applying brand colors & building PDF
-          </p>
-        </div>
-        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
+  const handleDownloadPDF = async () => {
+    setIsDownloadingPDF(true);
+    try {
+      const doc = await generatePDF(formData);
+      downloadPDF(doc, formData.firmName);
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
+  const handleDownloadPNG = async () => {
+    setIsDownloadingPNG(true);
+    try {
+      await downloadQRPng(scanUrl, formData.firmName, formData.brandColors.primary);
+    } finally {
+      setIsDownloadingPNG(false);
+    }
+  };
+
+  const handleDownloadSVG = async () => {
+    setIsDownloadingSVG(true);
+    try {
+      await downloadQRSvg(scanUrl, formData.firmName, formData.brandColors.primary);
+    } finally {
+      setIsDownloadingSVG(false);
+    }
+  };
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto" }} className="animate-fade-in-up">
-      {/* Success Header */}
-      <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            background: "linear-gradient(135deg, #10b981, #059669)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 14px",
-            boxShadow: "0 8px 32px rgba(16,185,129,0.4)",
-          }}
-        >
-          <CheckCircle size={28} color="white" />
-        </div>
-        <h2
-          className="font-display"
-          style={{ fontSize: "clamp(1.4rem, 4vw, 2rem)", fontWeight: 800, marginBottom: 8 }}
-        >
-          Your{" "}
-          <span className="text-gradient">Official Product Passport</span> is Ready!
-        </h2>
-        <p style={{ fontSize: "0.92rem", color: "var(--text-secondary)" }}>
-          Download the PDF dossier and QR code below. Anyone scanning the QR code will get the PDF instantly.
-        </p>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-        {/* ─── LEFT: PDF Section ─── */}
-        <div className="glass-card" style={{ padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "rgba(239,68,68,0.15)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <FileText size={18} color="#f87171" />
-            </div>
-            <div>
-              <h3 style={{ fontSize: "1rem", fontWeight: 700 }}>Official PDF Dossier</h3>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                A4 print-ready, branded document
-              </p>
-            </div>
+    <div className="w-full max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
+      {/* Top Success Banner */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <ShieldCheck className="w-7 h-7 text-emerald-300" />
           </div>
-
-          {/* PDF Info Preview */}
-          <div
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              borderRadius: 10,
-              padding: 16,
-              marginBottom: 16,
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 8,
-                paddingBottom: 8,
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: formData.brandColors.primary,
-                }}
-              />
-              <span
-                style={{
-                  fontSize: "0.85rem",
-                  fontWeight: 700,
-                  color: "var(--text-primary)",
-                  wordBreak: "break-word",
-                }}
-              >
-                {formData.firmName}
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">
+                Generated Successfully
               </span>
+              <span className="text-xs font-mono text-slate-500">GTIN: {formData.productId}</span>
             </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {[
-                { icon: Shield, text: formData.licenceNumber },
-                { icon: MapPin, text: formData.firmAddress.substring(0, 60) + (formData.firmAddress.length > 60 ? "..." : "") },
-                { icon: Phone, text: formData.mobile },
-                { icon: Mail, text: formData.email },
-                { icon: Building2, text: `${formData.ingredients.length} ingredients listed` },
-              ].map(({ icon: Icon, text }, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
-                  <Icon size={11} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span
-                    style={{
-                      fontSize: "0.78rem",
-                      color: "var(--text-secondary)",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    {text}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              {formData.productName}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1">
+              Official Digital Product Passport &amp; Scannable Packaging QR are ready for industrial printing.
+            </p>
           </div>
+        </div>
 
-          {/* Brand Colors Preview */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginBottom: 16,
-            }}
-          >
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Brand Theme:</span>
-            {[formData.brandColors.primary, formData.brandColors.secondary, formData.brandColors.tint].map(
-              (c, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 4,
-                    background: c,
-                    border: "1px solid rgba(255,255,255,0.2)",
-                  }}
-                  title={c}
-                />
-              )
-            )}
-          </div>
-
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <button
-            onClick={handleDownloadPdf}
-            disabled={!pdfDoc || downloadingPdf}
-            className="btn-primary"
-            style={{
-              width: "100%",
-              justifyContent: "center",
-              background: `linear-gradient(135deg, ${formData.brandColors.primary}, ${formData.brandColors.secondary})`,
-            }}
-            id="download-pdf-btn"
+            onClick={onEdit}
+            className="flex-1 md:flex-none btn-outline-corporate text-xs font-bold cursor-pointer"
           >
-            {downloadingPdf ? (
-              <Loader2 size={16} style={{ animation: "spin 0.7s linear infinite" }} />
-            ) : (
-              <Download size={16} />
-            )}
-            Download Official PDF
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit Details</span>
+          </button>
+          <button
+            onClick={onReset}
+            className="flex-1 md:flex-none btn-outline-corporate text-xs font-bold cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>New Product</span>
           </button>
         </div>
+      </div>
 
-        {/* ─── RIGHT: QR Code Section ─── */}
-        <div className="glass-card" style={{ padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "rgba(99,102,241,0.15)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <QrCode size={18} color="#818cf8" />
-            </div>
-            <div>
-              <h3 style={{ fontSize: "1rem", fontWeight: 700 }}>Scannable QR Code</h3>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                Opens PDF on any smartphone
-              </p>
-            </div>
-          </div>
-
-          {/* QR Code Display */}
-          {qrDataUrl ? (
-            <div
-              className="qr-card"
-              style={{ marginBottom: 14, padding: 16, position: "relative" }}
-            >
-              {/* Firm name label */}
-              <div
-                style={{
-                  background: formData.brandColors.primary,
-                  color: formData.brandColors.text,
-                  fontSize: "0.7rem",
-                  fontWeight: 700,
-                  padding: "4px 10px",
-                  borderRadius: "99px",
-                  display: "inline-block",
-                  marginBottom: 10,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {formData.firmName.substring(0, 30)}
+      {/* Main Grid: QR Downloads & Live Phone Preview */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left: QR Sticker & Downloads (7 Cols) */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Packaging Sticker Card */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Print-Ready Packaging QR Sticker
+                </h3>
+                <p className="text-xs text-slate-500">
+                  High-DPI format calibrated for corrugated boxes, pouches, labels &amp; jars.
+                </p>
               </div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={qrDataUrl}
-                alt={`QR Code for ${formData.firmName}`}
-                style={{ width: "100%", maxWidth: 200, height: "auto", margin: "0 auto", display: "block" }}
-              />
-              <p
-                style={{
-                  fontSize: "0.65rem",
-                  color: "#64748b",
-                  marginTop: 8,
-                  fontWeight: 500,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Scan for Product Info &amp; PDF
-              </p>
-            </div>
-          ) : (
-            <div
-              style={{
-                height: 200,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "rgba(255,255,255,0.03)",
-                borderRadius: 10,
-                marginBottom: 14,
-              }}
-            >
-              <Loader2 size={24} color="var(--text-muted)" style={{ animation: "spin 0.7s linear infinite" }} />
-            </div>
-          )}
-
-          {/* QR Warning */}
-          {qrWarning && (
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                padding: "10px 12px",
-                background: "rgba(245,158,11,0.1)",
-                border: "1px solid rgba(245,158,11,0.25)",
-                borderRadius: 8,
-                marginBottom: 12,
-              }}
-            >
-              <AlertTriangle size={14} color="#fbbf24" style={{ flexShrink: 0 }} />
-              <p style={{ fontSize: "0.75rem", color: "#fbbf24" }}>{qrWarning}</p>
-            </div>
-          )}
-
-          {/* URL length indicator */}
-          <div style={{ marginBottom: 12 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "0.72rem",
-                color: "var(--text-muted)",
-                marginBottom: 5,
-              }}
-            >
-              <span>QR payload size</span>
-              <span style={{ color: qrUrl.length > 1800 ? "#f87171" : "#10b981" }}>
-                {qrUrl.length} / 1800 chars
+              <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
+                100% Scannable
               </span>
             </div>
-            <div className="progress-bar-track">
-              <div
-                className="progress-bar-fill"
-                style={{
-                  width: `${Math.min((qrUrl.length / 1800) * 100, 100)}%`,
-                  background:
-                    qrUrl.length > 1800
-                      ? "linear-gradient(90deg, #f59e0b, #ef4444)"
-                      : "linear-gradient(90deg, #10b981, #3b82f6)",
-                }}
-              />
+
+            {/* Sticker Preview Box */}
+            <div className="max-w-xs mx-auto bg-slate-50 border-2 border-slate-300 rounded-2xl p-5 text-center shadow-xs">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-900">
+                  {formData.brandName || formData.firmName}
+                </span>
+                <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                  FSSAI COMPLIANT
+                </span>
+              </div>
+
+              {/* QR Image */}
+              <div className="relative w-48 h-48 mx-auto bg-white p-2 rounded-xl shadow-xs border border-slate-200 flex items-center justify-center my-3">
+                {qrDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={qrDataUrl}
+                    alt="Packaging QR Code"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <QrCode className="w-20 h-20 text-slate-300 animate-pulse" />
+                )}
+              </div>
+
+              <p className="text-[11px] font-bold text-slate-900 tracking-tight uppercase">
+                Scan to Verify Product Details
+              </p>
+              <p className="text-[9px] text-slate-500 font-mono mt-0.5">
+                FSSAI Reg: {formData.licenceNumber}
+              </p>
+            </div>
+
+            {/* Download Buttons Bar */}
+            <div className="mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={handleDownloadPNG}
+                disabled={isDownloadingPNG || !qrDataUrl}
+                className="btn-navy text-xs font-bold py-3 cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-emerald-400" />
+                <span>Download 800DPI PNG</span>
+              </button>
+
+              <button
+                onClick={handleDownloadSVG}
+                disabled={isDownloadingSVG || !qrDataUrl}
+                className="btn-outline-corporate text-xs font-bold py-3 cursor-pointer"
+              >
+                <Printer className="w-4 h-4 text-slate-600" />
+                <span>Download Vector SVG</span>
+              </button>
             </div>
           </div>
 
-          {/* Download Buttons */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          {/* Official PDF Dossier Download Card */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 text-white shadow-xs"
+                style={{ backgroundColor: formData.brandColors.primary || "#0F5132" }}
+              >
+                <FileText className="w-7 h-7" />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Official Regulatory Certificate
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="text-[11px] font-semibold text-emerald-800">Branded Theme</span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                  Auto-Branded Official PDF Dossier
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Formatted A4 compliance certificate with structured tables &amp; verification seal.
+                </p>
+              </div>
+            </div>
+
             <button
-              onClick={handleDownloadQrPng}
-              disabled={!qrDataUrl || downloadingQr}
-              className="btn-primary"
-              style={{ flex: 1, justifyContent: "center", fontSize: "0.82rem", padding: "10px 12px" }}
-              id="download-qr-png-btn"
+              onClick={handleDownloadPDF}
+              disabled={isDownloadingPDF}
+              className="w-full sm:w-auto btn-emerald text-xs font-bold py-3.5 px-6 whitespace-nowrap cursor-pointer"
             >
-              {downloadingQr ? <Loader2 size={14} style={{ animation: "spin 0.7s linear infinite" }} /> : <Download size={14} />}
-              PNG
-            </button>
-            <button
-              onClick={handleDownloadQrSvg}
-              disabled={!qrDataUrl}
-              className="btn-secondary"
-              style={{ flex: 1, justifyContent: "center", fontSize: "0.82rem", padding: "10px 12px" }}
-              id="download-qr-svg-btn"
-            >
-              <Download size={14} />
-              SVG
+              <Download className="w-4 h-4 text-emerald-200" />
+              <span>{isDownloadingPDF ? "Generating PDF..." : "Download Official PDF"}</span>
             </button>
           </div>
 
-          {/* Copy URL */}
-          <button
-            onClick={handleCopyUrl}
-            className="btn-secondary"
-            style={{ width: "100%", justifyContent: "center", fontSize: "0.82rem" }}
-            id="copy-url-btn"
-          >
-            {copied ? (
-              <>
-                <CheckCircle size={14} color="#10b981" />
-                <span style={{ color: "#10b981" }}>Copied!</span>
-              </>
-            ) : (
-              <>
-                <Share2 size={14} />
-                Copy QR Link
-              </>
-            )}
-          </button>
+          {/* Scan URL & Direct Testing Box */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Encrypted Mobile Scan URL
+              </span>
+              <span className="text-[11px] text-slate-500 font-mono">
+                {scanUrl.length} chars (Instant Camera Scan)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={scanUrl}
+                className="flex-1 form-input text-xs font-mono bg-white py-2 px-3 text-slate-700 select-all"
+              />
+              <button
+                onClick={handleCopy}
+                className="btn-outline-corporate text-xs font-bold py-2 px-3.5 whitespace-nowrap cursor-pointer"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                <span>{copied ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+              <span>Anyone scanning the QR is routed to this secure passport screen.</span>
+              <a
+                href={scanUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="font-bold text-emerald-800 hover:text-emerald-900 inline-flex items-center gap-1 hover:underline"
+              >
+                <span>Test Scan in Browser</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Live Mobile Phone Scan Simulator (5 Cols) */}
+        <div className="lg:col-span-5">
+          <div className="bg-slate-900 p-3 rounded-3xl shadow-xl border border-slate-800">
+            <div className="flex items-center justify-between text-white text-xs px-3 py-1 mb-2 font-mono">
+              <div className="flex items-center gap-1.5">
+                <Smartphone className="w-4 h-4 text-emerald-400" />
+                <span className="font-bold">Consumer Phone Scan Simulation</span>
+              </div>
+              <span className="text-[10px] text-slate-400">iOS / Android Ready</span>
+            </div>
+
+            {/* Mobile Frame */}
+            <div className="bg-slate-100 rounded-2xl overflow-hidden text-xs max-h-[680px] overflow-y-auto">
+              {/* Phone Header Banner */}
+              <div
+                className="p-4 text-white"
+                style={{
+                  background: `linear-gradient(135deg, ${
+                    formData.brandColors.primary || "#0F5132"
+                  }, ${formData.brandColors.secondary || "#059669"})`,
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] uppercase font-bold tracking-widest bg-white/20 px-2 py-0.5 rounded">
+                    Verified Product
+                  </span>
+                  <div className="w-5 h-5 bg-white border border-white flex items-center justify-center p-0.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-700" />
+                  </div>
+                </div>
+
+                <h4 className="text-base font-extrabold">{formData.productName}</h4>
+                <p className="text-[11px] text-white/80">
+                  {formData.brandName} • {formData.firmName}
+                </p>
+              </div>
+
+              {/* Scanned Details Table in phone */}
+              <div className="p-4 space-y-3">
+                <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 text-[11px]">
+                  <div className="p-2.5 flex justify-between">
+                    <span className="text-slate-500 font-bold uppercase text-[9px]">Product Id</span>
+                    <span className="font-mono font-bold text-slate-900">{formData.productId}</span>
+                  </div>
+                  <div className="p-2.5 flex justify-between">
+                    <span className="text-slate-500 font-bold uppercase text-[9px]">Pack Size</span>
+                    <span className="font-medium text-slate-900">{formData.netQuantity}</span>
+                  </div>
+                  <div className="p-2.5 flex justify-between">
+                    <span className="text-slate-500 font-bold uppercase text-[9px]">MRP</span>
+                    <span className="font-bold text-slate-900">{formData.mrp}</span>
+                  </div>
+                  <div className="p-2.5 flex justify-between">
+                    <span className="text-slate-500 font-bold uppercase text-[9px]">FSSAI Lic No.</span>
+                    <span className="font-mono font-bold text-emerald-700">
+                      {formData.licenceNumber}
+                    </span>
+                  </div>
+                  <div className="p-2.5">
+                    <span className="text-slate-500 font-bold uppercase text-[9px] block">Company Address</span>
+                    <span className="text-slate-800 text-[10px] leading-tight block mt-0.5">
+                      {formData.firmAddress}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Composition */}
+                <div className="bg-white rounded-xl border border-slate-200 p-3">
+                  <span className="text-slate-500 font-bold uppercase text-[9px] block mb-1.5">
+                    Ingredients Declared
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {formData.ingredients.map((ing, i) => (
+                      <span
+                        key={i}
+                        className="bg-slate-100 text-slate-800 border border-slate-200 px-2 py-0.5 rounded text-[10px]"
+                      >
+                        {ing}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Button inside phone */}
+                <a
+                  href={scanUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full block text-center py-2.5 rounded-xl font-bold text-white bg-slate-900 hover:bg-slate-800 transition shadow-xs text-xs"
+                >
+                  Open Full Mobile Scan Page &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Test QR Link */}
-      {qrUrl && (
-        <div
-          className="glass-card"
-          style={{ marginTop: 16, padding: "14px 18px", display: "flex", alignItems: "center", gap: 10 }}
-        >
-          <ExternalLink size={14} color="var(--text-muted)" />
-          <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", flex: 1 }}>
-            Test your QR link:
-            <a
-              href={qrUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: "#818cf8",
-                marginLeft: 6,
-                wordBreak: "break-all",
-                textDecoration: "none",
-                fontSize: "0.75rem",
-              }}
-            >
-              {qrUrl.substring(0, 80)}...
-            </a>
-          </p>
-        </div>
-      )}
-
-      {/* Start Over */}
-      <div style={{ textAlign: "center", marginTop: 24 }}>
-        <button onClick={onReset} className="btn-secondary" id="start-over-btn">
-          <RefreshCcw size={15} />
-          Create Another Product Passport
-        </button>
-      </div>
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

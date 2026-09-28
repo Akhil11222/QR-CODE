@@ -1,24 +1,33 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
-  title: "VeriPack QR — Digital Product Passport & PDF QR Generator",
+  title: "VeriPack India — Standardized Digital Product Passport & Smart QR Compliance Suite",
   description:
-    "Turn your firm & product details into an official, auto-branded PDF dossier with a scannable QR code in 60 seconds. Enterprise-grade digital product passport for manufacturers and brands.",
+    "National compliance QR code and auto-branded PDF dossier generator for Indian FMCG manufacturers, food businesses (FBOs), dairy/spice brands, and exporters. FSSAI FoSCoS, GS1 GTIN, and Legal Metrology compliant.",
   keywords: [
-    "product passport",
-    "QR code generator",
-    "PDF generator",
-    "brand compliance",
-    "FSSAI",
-    "ISO",
-    "product ingredients",
-    "digital passport",
+    "FSSAI QR code",
+    "Digital Product Passport India",
+    "FMCG packaging compliance",
+    "GS1 GTIN barcode",
+    "Hari Sharnam Royal Ghee",
+    "FBO packaging QR",
+    "Legal Metrology packaged commodities",
+    "Lab report QR code",
   ],
+  authors: [{ name: "VeriPack India Regulatory Compliance Team" }],
   openGraph: {
-    title: "VeriPack QR — Digital Product Passport",
-    description: "Official branded PDF dossiers with scannable QR codes for your products.",
+    title: "VeriPack India — Digital Product Passport & Smart QR Compliance Suite",
+    description:
+      "Official digital product passports, scannable compliance QR codes, and auto-branded PDF dossiers for Indian brands.",
     type: "website",
+    locale: "en_IN",
   },
 };
 
@@ -32,8 +41,14 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
       </head>
-      <body>{children}</body>
+      <body className="bg-slate-50 text-slate-800 antialiased min-h-screen">
+        {children}
+      </body>
     </html>
   );
 }
